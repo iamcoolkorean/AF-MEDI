@@ -1,10 +1,10 @@
 import os
 import threading
 
-# 텔레그램 봇 토큰 (환경변수 TELEGRAM_BOT_TOKEN)
+# 텔레그램 봇 토큰
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
-# Gemini API 키 8개 (GEMINI_API_KEY_1 ~ GEMINI_API_KEY_8)
+# Gemini API 키 8개
 GEMINI_API_KEYS = []
 for i in range(1, 9):
     key = os.environ.get(f"GEMINI_API_KEY_{i}")
