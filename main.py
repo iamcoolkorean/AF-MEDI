@@ -13,7 +13,6 @@ from handlers.lifestyle import handle_lifestyle_message
 from handlers.booking import booking_handler
 from sessions import get_session
 
-# Flask 헬스체크 서버
 app = Flask(__name__)
 
 @app.route('/health')
@@ -37,7 +36,6 @@ async def handle_message(update, context):
         await update.message.reply_text("먼저 /start 를 눌러 모드를 선택해주세요.")
 
 async def validate_token(token: str) -> bool:
-    """텔레그램 토큰이 유효한지 사전 검증"""
     try:
         bot = Bot(token=token)
         await bot.get_me()
@@ -52,11 +50,9 @@ def main():
         print("❌ TELEGRAM_BOT_TOKEN이 설정되지 않았습니다.")
         sys.exit(1)
 
-    # Flask 서버 시작 (Render 포트 바인딩)
     threading.Thread(target=run_flask, daemon=True).start()
     print("🌐 Flask health server started on port", os.environ.get("PORT", 10000))
 
-    # 토큰 사전 검증
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     if not loop.run_until_complete(validate_token(TELEGRAM_BOT_TOKEN)):
@@ -64,10 +60,7 @@ def main():
         sys.exit(1)
     print("✅ 텔레그램 토큰 검증 완료")
 
-    # 텔레그램 Application 생성
     app_tg = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-    # 핸들러 등록
     app_tg.add_handler(CommandHandler("start", start))
     app_tg.add_handler(CallbackQueryHandler(mode_selection, pattern="^mode_"))
     app_tg.add_handler(CallbackQueryHandler(booking_handler, pattern="^(book_|cancel_booking)"))
