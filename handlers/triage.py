@@ -6,10 +6,6 @@ from prompts import TRIAGE_SYSTEM_PROMPT
 from gemini_api import generate_response
 from config import MEDIC_PHONE_SLOTS, DOCTOR_SLOTS
 
-# config.py에 시간표도 추가해야 함
-MEDIC_PHONE_SLOTS = ["10:00", "11:00", "13:30", "14:30", "16:00"]
-DOCTOR_SLOTS = ["09:30", "10:30", "14:00", "15:00", "16:00"]
-
 async def handle_triage_message(update: Update, context: ContextTypes.DEFAULT_TYPE, session: dict, user_text: str):
     session["history"].append({"role": "user", "parts": [user_text]})
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -59,5 +55,4 @@ async def handle_triage_message(update: Update, context: ContextTypes.DEFAULT_TY
             await update.message.reply_text("분류 오류가 발생했습니다.")
             session["mode"] = None
     else:
-        # 아직 문진 중이면 AI의 질문을 그대로 출력
         await update.message.reply_text(ai_response)
