@@ -3,7 +3,7 @@ from google.genai import types
 from config import get_next_api_key
 from typing import List
 
-MODEL_NAME = "gemini-2.5-flash"  # 또는 "gemini-2.5-pro"
+MODEL_NAME = "gemini-2.5-flash"
 
 def generate_response(system_prompt: str, history: List[dict]) -> str:
     key = get_next_api_key()
@@ -27,7 +27,7 @@ def generate_response(system_prompt: str, history: List[dict]) -> str:
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 temperature=0.7,
-                max_output_tokens=1024,
+                max_output_tokens=4096,   # ← 길이 확보
             )
         )
         return response.text
