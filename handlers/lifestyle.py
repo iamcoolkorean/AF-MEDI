@@ -5,7 +5,7 @@ from sessions import get_session
 from prompts import LIFESTYLE_SYSTEM_PROMPT
 from gemini_api import generate_response
 from database import MOCK_SOLDIERS
-from utils import soldier_data_to_text
+from utils import soldier_data_to_text, send_long_message   # ← 분할 전송 함수
 
 async def handle_lifestyle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, session: dict, user_text: str):
     # 군번 패턴 감지
@@ -36,4 +36,6 @@ async def handle_lifestyle_message(update: Update, context: ContextTypes.DEFAULT
 
     history.append({"role": "model", "parts": [ai_response]})
     session["history"] = history
-    await update.message.reply_text(ai_response)
+
+    # 긴 응답은 자동 분할 전송
+    await send_long_message(update, context, ai_response)
