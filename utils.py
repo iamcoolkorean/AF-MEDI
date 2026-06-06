@@ -1,6 +1,13 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+def soldier_data_to_text(snum: str, data: dict) -> str:
+    """병사 검진 데이터를 AI에게 전달할 텍스트로 변환"""
+    text = f"\n\n[현재 조회 중인 병사 정보]\n군번: {snum}\n이름: {data['이름']} {data['계급']}\n검진일: {data['검진일']}\n"
+    for k, v in data["결과"].items():
+        text += f"- {k}: {v}\n"
+    return text
+
 def split_long_message(text: str, max_length: int = 4000) -> list[str]:
     """긴 텍스트를 텔레그램 메시지 길이 제한에 맞게 분할한다."""
     if len(text) <= max_length:
