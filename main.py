@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 from flask import Flask
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
@@ -9,7 +10,6 @@ from handlers.lifestyle import handle_lifestyle_message
 from handlers.booking import booking_handler
 from sessions import get_session
 
-# Flask 앱 생성 (Render가 포트를 감지해서 sleep 방지)
 app = Flask(__name__)
 
 @app.route('/health')
@@ -20,7 +20,6 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# 텔레그램 메시지 핸들러
 async def handle_message(update, context):
     user_id = update.effective_user.id
     session = get_session(user_id)
@@ -36,13 +35,11 @@ async def handle_message(update, context):
 def main():
     if not TELEGRAM_BOT_TOKEN:
         print("❌ TELEGRAM_BOT_TOKEN이 설정되지 않았습니다.")
-        return
+        sys.exit(1)
 
-    # Flask를 별도 스레드에서 실행 (포트 바인딩)
     threading.Thread(target=run_flask, daemon=True).start()
     print("🌐 Flask health server started on port", os.environ.get("PORT", 10000))
 
-    # 텔레그램 봇 Application
     app_tg = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app_tg.add_handler(CommandHandler("start", start))
     app_tg.add_handler(CallbackQueryHandler(mode_selection, pattern="^mode_"))
@@ -50,7 +47,15 @@ def main():
     app_tg.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("✈️ MEDI+ 텔레그램 봇 실행 중...")
-    app_tg.run_polling()
+    try:
+        app_tg.run_polling()
+    except Exception as e:
+        # 토큰 관련 오류일 때 토큰 문자열을 절대 출력하지 않음
+        if "InvalidToken" in type(e).__name__:
+            print("❌ TELEGRAM_BOT_TOKEN이 유효하지 않습니다. BotFather에서 새 토큰을 발급받아 Render 환경변수를 업데이트하세요.")
+        else:
+            print(f"❌ 예상치 못한 오류: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
