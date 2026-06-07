@@ -35,10 +35,19 @@ async def handle_triage_message(update: Update, context: ContextTypes.DEFAULT_TY
             elif line.startswith("RECOMMENDATION:"):
                 rec = line.split(":",1)[1].strip()
 
-        # 2. 예비 문진표 생성 (공통)
-        chart_message = generate_preliminary_chart(session.get("soldier_name", "알 수 없음"), session["history"])
+        # 2. 사용자 이름 찾기 (세션에서 또는 첫 메시지에서 추출)
+        soldier_name = session.get("soldier_name", "알 수 없음")
+        if soldier_name == "알 수 없음":
+            # 첫 사용자 메시지에서 이름을 추출 시도
+            first_msg = session["history"][0]["parts"][0] if session["history"] else ""
+            name_match = re.search(r'(병장|상병|일병|이병)\s+(\S+)', first_msg)
+            if name_match:
+                soldier_name = name_match.group(2)
 
-        # 3. Level에 따른 분기
+        # 3. 예비 문진표 생성
+        chart_message = await generate_preliminary_chart(soldier_name, session["history"])
+
+        # 4. Level에 따른 분기
         if level == 1:
             # 경증: 군의관 전화 진료
             keyboard = [[InlineKeyboardButton(f"📞 {t}", callback_data=f"book_medic_{t}")] for t in MEDIC_PHONE_SLOTS]
