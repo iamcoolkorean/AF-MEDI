@@ -5,7 +5,7 @@ from sessions import get_session
 from prompts import TRIAGE_SYSTEM_PROMPT
 from gemini_api import generate_response
 from config import MEDIC_PHONE_SLOTS, DOCTOR_SLOTS
-from utils import send_long_message   # ← 분할 전송 함수
+from utils import send_long_message, generate_preliminary_chart
 
 async def handle_triage_message(update: Update, context: ContextTypes.DEFAULT_TYPE, session: dict, user_text: str):
     session["history"].append({"role": "user", "parts": [user_text]})
@@ -21,6 +21,8 @@ async def handle_triage_message(update: Update, context: ContextTypes.DEFAULT_TY
 
     if "FINAL_RESULT:" in ai_response:
         session["triage_done"] = True
+        
+        # 1. 결과 파싱
         level = None
         desc = ""
         rec = ""
@@ -33,28 +35,55 @@ async def handle_triage_message(update: Update, context: ContextTypes.DEFAULT_TY
             elif line.startswith("RECOMMENDATION:"):
                 rec = line.split(":",1)[1].strip()
 
+        # 2. 예비 문진표 생성 (공통)
+        chart_message = generate_preliminary_chart(session.get("soldier_name", "알 수 없음"), session["history"])
+
+        # 3. Level에 따른 분기
         if level == 1:
-            keyboard = [[InlineKeyboardButton(f"{t}", callback_data=f"book_medic_{t}")] for t in MEDIC_PHONE_SLOTS]
+            # 경증: 군의관 전화 진료
+            keyboard = [[InlineKeyboardButton(f"📞 {t}", callback_data=f"book_medic_{t}")] for t in MEDIC_PHONE_SLOTS]
             keyboard.append([InlineKeyboardButton("취소", callback_data="cancel_booking")])
+            
             await update.message.reply_text(
-                f"필승! 📋 **AI 예진 결과 (Level 1)**\n\n{desc}\n\n💡 {rec}\n\n의무병 전화상담 예약 가능 시간입니다.",
+                f"필승! 📋 **AI 예진 결과 (Level 1 - 경증)**\n\n{desc}\n\n💡 {rec}\n\n군의관 전화상담 예약 시간을 선택하세요.",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
+            # 예비 문진표 전송
+            await send_long_message(update, context, chart_message)
+
         elif level == 2:
-            keyboard = [[InlineKeyboardButton(f"{t}", callback_data=f"book_doctor_{t}")] for t in DOCTOR_SLOTS]
+            # 중등증: 대면 진료
+            keyboard = [[InlineKeyboardButton(f"🏥 {t}", callback_data=f"book_doctor_{t}")] for t in DOCTOR_SLOTS]
             keyboard.append([InlineKeyboardButton("취소", callback_data="cancel_booking")])
+            
+            care_guide = ("\n\n[진료 전 행동 요령]\n"
+                          "- 충분한 휴식을 취하세요.\n"
+                          "- 증상이 심해지면 즉시 응급실로 방문하세요.\n"
+                          "- [자가 모니터링 체크리스트]\n"
+                          "  1) 체온 측정 (1시간 간격)\n"
+                          "  2) 통증 강도 기록 (0~10)\n"
+                          "  3) 의식 상태 체크 (멍함/정상)\n")
+            
             await update.message.reply_text(
-                f"필승! 📋 **AI 예진 결과 (Level 2)**\n\n{desc}\n\n💡 {rec}\n\n군의관 원격 진료 가능 시간입니다.",
+                f"필승! 📋 **AI 예진 결과 (Level 2 - 중등증/중증의심)**\n\n{desc}\n\n💡 {rec}{care_guide}\n\n대면 진료 예약 시간을 선택하세요.",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
+            # 예비 문진표 전송
+            await send_long_message(update, context, chart_message)
+
         elif level == 3:
-            await update.message.reply_text(
-                f"🚨 필승! **응급 상황 (Level 3)**\n\n{desc}\n\n{rec}\n\n⚠️ 즉시 응급실로 이동하십시오. 부대 상황병에게도 자동 전파되었습니다."
-            )
+            # 중증 응급: 즉시 내원/출동
+            emergency_alert = ("🚨 **응급 상황 발령 (Level 3)** 🚨\n\n"
+                               f"{desc}\n\n"
+                               "**즉시 의무대 출동 또는 내원을 요청합니다!**\n"
+                               "부대 상황병에게 자동 알림이 전파되었습니다.\n"
+                               "구급대가 출동 중이오니, 환자를 절대 혼자 두지 마십시오.")
+            await update.message.reply_text(emergency_alert)
+            # 세션 초기화
             session["mode"] = None
         else:
             await update.message.reply_text("분류 오류가 발생했습니다. 다시 시도해 주십시오.")
             session["mode"] = None
     else:
-        # 문진 중일 때는 AI 질문을 그대로 출력 (긴 경우 분할 전송)
+        # 문진 중일 때는 AI 질문을 그대로 출력
         await send_long_message(update, context, ai_response)
